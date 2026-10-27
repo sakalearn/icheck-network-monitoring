@@ -23,22 +23,22 @@
 
 ## Application Features & Screenshots
 
-Berikut adalah pratinjau tampilan antarmuka dari setiap tab fitur utama pada aplikasi ICheck:
+Here is a preview of the user interface from each main feature tab in the ICheck application:
 
 ### 1. Monitor Tab
-Memantau penggunaan kuota secara *real-time*, kecepatan unduh/unggah jaringan aktif, progress bar dinamis, serta siklus penghitung waktu mundur interval 10 menit.
+Monitors real-time quota consumption, active network download/upload speed, dynamic progress bar, and the 10-minute interval countdown cycle.
 ![Monitor Tab](preview-monitor.png)
 
 ### 2. Configuration Tab
-Mengatur batas kuota harian atau bulanan secara fleksibel menggunakan *SpinButton* atau tombol *preset* cepat, serta memilih *interface* jaringan yang ingin dipantau.
+Flexibly configures daily or monthly quota limits using a SpinButton or quick-select preset buttons, and allows selecting the network interface to monitor.
 ![Configuration Tab](preview-configuration.png)
 
 ### 3. Usage Logs (10m) Tab
-Menyajikan tabel riwayat konsumsi data per 10 menit secara otomatis beserta fitur pencatatan manual dan pembersihan log riwayat.
+Presents an automated historical table of 10-minute data consumption intervals along with manual snapshot recording and log clearing features.
 ![Logs Tab](preview-log.png)
 
 ### 4. System Tab
-Menyediakan kontrol manajemen sesi seperti deteksi ulang jaringan, tombol *reset* kuota darurat, serta tombol keluar aplikasi yang aman.
+Provides session management controls such as network redetection, emergency quota reset, and safe application exit buttons.
 ![System Tab](preview-system.png)
 
 ## System Dependencies & Library Installation
