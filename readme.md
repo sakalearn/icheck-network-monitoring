@@ -43,6 +43,7 @@ Provides session management controls such as network redetection, emergency quot
 
 ### 5. Windows & Tray Integration Preview
 Displays how ICheck seamlessly integrates with the desktop environment, featuring real-time quota telemetry right next to the system tray and panel indicators.
+
 ![Windows Preview](preview-windows.png)
 
 ## System Dependencies & Library Installation
