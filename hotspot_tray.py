@@ -8,6 +8,17 @@ import gi
 gi.require_version('Gtk', '3.0')
 from gi.repository import Gtk, GLib, Gdk
 
+# Dukungan otomatis untuk System Tray / Panel Atas Linux (Ubuntu 24.04+)
+HAS_INDICATOR = False
+for ns in ('AyatanaAppIndicator3', 'AppIndicator3'):
+    try:
+        gi.require_version(ns, '0.1')
+        IndicatorMod = getattr(__import__('gi.repository', fromlist=[ns]), ns)
+        HAS_INDICATOR = True
+        break
+    except (ValueError, ImportError):
+        continue
+
 CONFIG_DIR = os.path.expanduser("~/.config/icheck_guard/")
 os.makedirs(CONFIG_DIR, exist_ok=True)
 IFACE_CONFIG_FILE = os.path.join(CONFIG_DIR, "iface.txt")
@@ -97,7 +108,7 @@ class ICheckWindow(Gtk.Window):
         super().__init__(title="ICheck")
         self.set_default_size(620, 440)
         self.set_position(Gtk.WindowPosition.CENTER)
-        self.connect("destroy", self.on_quit)
+        self.connect("delete-event", self.on_window_close)
 
         self.iface = detect_default_interface()
         self.ssid = detect_active_ssid(self.iface)
@@ -116,9 +127,66 @@ class ICheckWindow(Gtk.Window):
         nb.append_page(self.build_logs_tab(), Gtk.Label(label="Usage Logs (10m)"))
         nb.append_page(self.build_system_tab(), Gtk.Label(label="System"))
 
+        self.init_tray_indicator()
         self.load_logs()
+        self.tick()
         GLib.timeout_add_seconds(1, self.tick)
         self.show_all()
+
+    # --- INISIALISASI PANEL ATAS (SYSTEM TRAY) ---
+    def init_tray_indicator(self):
+        self.indicator = None
+        if not HAS_INDICATOR:
+            return
+
+        self.indicator = IndicatorMod.Indicator.new(
+            "icheck-network-monitor",
+            "network-transmit-receive-symbolic",
+            IndicatorMod.IndicatorCategory.SYSTEM_SERVICES
+        )
+        self.indicator.set_status(IndicatorMod.IndicatorStatus.ACTIVE)
+        self.indicator.set_label(" 0 KB (0%)", " 999.99 MB (100%)")
+
+        menu = Gtk.Menu()
+
+        self.tray_info_item = Gtk.MenuItem(label=f"SSID: {self.ssid}")
+        self.tray_info_item.set_sensitive(False)
+        menu.append(self.tray_info_item)
+        menu.append(Gtk.SeparatorMenuItem())
+
+        item_toggle = Gtk.MenuItem(label="Show / Hide ICheck Window")
+        item_toggle.connect("activate", self.on_toggle_window)
+        menu.append(item_toggle)
+
+        item_snap = Gtk.MenuItem(label="Record 10m Snapshot Now")
+        item_snap.connect("activate", lambda _: self.record_snapshot(manual=True))
+        menu.append(item_snap)
+
+        item_reset = Gtk.MenuItem(label="Reset Quota Counter")
+        item_reset.connect("activate", self.on_reset_quota)
+        menu.append(item_reset)
+
+        menu.append(Gtk.SeparatorMenuItem())
+
+        item_quit = Gtk.MenuItem(label="Save State & Quit")
+        item_quit.connect("activate", self.on_quit)
+        menu.append(item_quit)
+
+        menu.show_all()
+        self.indicator.set_menu(menu)
+
+    def on_toggle_window(self, _):
+        if self.get_visible():
+            self.hide()
+        else:
+            self.present()
+
+    def on_window_close(self, widget, event):
+        if self.indicator is not None:
+            self.hide()
+            return True
+        self.on_quit()
+        return False
 
     def paths(self):
         safe = "".join(c if c.isalnum() else "_" for c in self.ssid)
@@ -286,6 +354,7 @@ class ICheckWindow(Gtk.Window):
         actions = [
             ("Refresh Network Detection", self.on_refresh_net, False),
             ("Reset Current Quota Session", self.on_reset_quota, True),
+            ("Hide to Background Tray", lambda _: self.hide(), False),
             ("Save State & Exit", self.on_quit, False)
         ]
         for label_txt, handler, is_danger in actions:
@@ -403,6 +472,9 @@ class ICheckWindow(Gtk.Window):
             # 2. Quota Progress
             used_b = self.get_used_bytes(sys_b)
             pct = (used_b / 1048576) / self.limit_mb if self.limit_mb > 0 else 0
+            pct_int = int(pct * 100)
+            used_str = fmt_size(used_b)
+
             self.lbl_ssid.set_markup(f"<span font='12' weight='bold'>SSID: {self.ssid} ({self.iface})</span>")
             self.pbar.set_fraction(min(pct, 1.0))
 
@@ -417,9 +489,18 @@ class ICheckWindow(Gtk.Window):
             elif pct >= 0.8:
                 ctx.add_class("warn")
 
-            self.lbl_usage.set_text(f"{fmt_size(used_b)} / {self.limit_mb} MB ({int(pct * 100)}%)")
+            self.lbl_usage.set_text(f"{used_str} / {self.limit_mb} MB ({pct_int}%)")
 
-            # 3. 10-Minute Interval Calculation
+            # 3. Update Real-Time Top Panel Indicator
+            if self.indicator is not None:
+                self.indicator.set_label(f" {used_str} ({pct_int}%)", " 999.99 MB (100%)")
+                self.tray_info_item.set_label(f"{self.ssid} — {rate_str}")
+                if pct >= 1.0:
+                    self.indicator.set_icon_full("network-error-symbolic", "Quota Exceeded")
+                else:
+                    self.indicator.set_icon_full("network-transmit-receive-symbolic", "Normal")
+
+            # 4. 10-Minute Interval Calculation
             elapsed = now - self.cycle_start_time
             rem_m, rem_s = divmod(max(0, int(self.INTERVAL_SEC - elapsed)), 60)
             delta_str = fmt_size(max(0, used_b - self.cycle_start_bytes))

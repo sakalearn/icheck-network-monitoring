@@ -41,6 +41,10 @@ Presents an automated historical table of 10-minute data consumption intervals a
 Provides session management controls such as network redetection, emergency quota reset, and safe application exit buttons.
 ![System Tab](preview-system.png)
 
+### 5. Windows & Tray Integration Preview
+Displays how ICheck seamlessly integrates with the desktop environment, featuring real-time quota telemetry right next to the system tray and panel indicators.
+![Windows Preview](preview-windows.png)
+
 ## System Dependencies & Library Installation
 
 ICheck relies on native Linux system utilities and GTK+ 3 bindings for Python. Before running the application, install the required libraries according to your Linux distribution:
